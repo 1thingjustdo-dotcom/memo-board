@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>메모 보드</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg: #f7f6f2;
+  --surface: #ffffff;
+  --surface2: #f0efe9;
+  --border: #e2e0d8;
+  --border2: #d0cec5;
+  --text: #1a1916;
+  --text2: #6b6960;
+  --text3: #a09e96;
+  --idea-bg: #ede9fe; --idea-text: #4c1d95; --idea-dot: #7c3aed;
+  --todo-bg: #dcfce7; --todo-text: #14532d; --todo-dot: #16a34a;
+  --link-bg: #dbeafe; --link-text: #1e3a8a; --link-dot: #2563eb;
+  --memo-bg: #fef9c3; --memo-text: #713f12; --memo-dot: #ca8a04;
+  --quote-bg: #fce7f3; --quote-text: #831843; --quote-dot: #db2777;
+  --r: 10px;
+  --r-sm: 6px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Pretendard',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
+a{color:inherit;text-decoration:none}
+
+/* ── layout ── */
+.app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+
+/* ── top bar ── */
+.topbar{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap}
+.logo{font-size:15px;font-weight:600;letter-spacing:-0.3px;white-space:nowrap}
+.logo span{color:var(--text3)}
+.topbar-input{flex:1;min-width:140px;padding:7px 12px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface2);font-family:inherit;font-size:13px;color:var(--text);outline:none;transition:border-color .15s}
+.topbar-input:focus{border-color:var(--border2)}
+.cat-select{padding:7px 10px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface2);font-family:inherit;font-size:13px;color:var(--text);cursor:pointer;outline:none}
+.add-btn{padding:7px 16px;border:1px solid var(--border2);border-radius:var(--r-sm);background:var(--text);color:var(--surface);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;transition:opacity .15s;white-space:nowrap}
+.add-btn:hover{opacity:.85}
+
+/* ── filter row ── */
+.filterbar{display:flex;gap:6px;padding:10px 16px;flex-wrap:wrap;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
+.fb{padding:4px 12px;border-radius:20px;border:1px solid var(--border);background:var(--surface);font-family:inherit;font-size:12px;color:var(--text2);cursor:pointer;transition:all .15s}
+.fb:hover{border-color:var(--border2)}
+.fb.on{background:var(--text);color:var(--surface);border-color:var(--text)}
+
+/* ── board ── */
+.board-wrap{flex:1;overflow-x:auto;overflow-y:hidden;padding:14px 16px}
+.board{display:flex;gap:12px;height:100%;align-items:flex-start}
+
+/* ── column ── */
+.col{width:210px;flex-shrink:0;background:var(--surface2);border-radius:var(--r);border:1px solid var(--border);display:flex;flex-direction:column;max-height:100%;overflow:hidden}
+.col-head{padding:10px 12px 8px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.col-title{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:var(--text2);letter-spacing:.2px;text-transform:uppercase}
+.col-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.col-count{font-size:11px;color:var(--text3);background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:1px 7px}
+.cards{flex:1;overflow-y:auto;padding:0 8px 10px;scrollbar-width:thin}
+.cards::-webkit-scrollbar{width:3px}
+.cards::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+/* ── card ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:10px 11px;margin-bottom:7px;cursor:grab;transition:box-shadow .15s,opacity .15s,transform .1s;position:relative}
+.card:active{cursor:grabbing}
+.card:hover{box-shadow:0 2px 8px rgba(0,0,0,.07)}
+.card.dragging{opacity:.35;transform:scale(.97)}
+.card.over{border-color:var(--border2);box-shadow:0 0 0 2px var(--border2)}
+.tag{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;margin-bottom:7px;letter-spacing:.2px}
+.card-text{font-size:13px;line-height:1.55;color:var(--text);word-break:break-word;white-space:pre-wrap}
+.card-link{display:block;font-size:11px;color:#2563eb;margin-top:5px;word-break:break-all;cursor:pointer}
+.card-link:hover{text-decoration:underline}
+.stars{display:flex;gap:2px;margin-top:8px}
+.star{font-size:13px;cursor:pointer;color:var(--border2);transition:color .1s;line-height:1;background:none;border:none;padding:0;font-family:inherit}
+.star.on{color:#f59e0b}
+.card-btns{position:absolute;top:8px;right:8px;display:flex;gap:3px;opacity:0;transition:opacity .15s}
+.card:hover .card-btns{opacity:1}
+.cb{background:var(--surface2);border:1px solid var(--border);border-radius:4px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;color:var(--text2);transition:background .1s}
+.cb:hover{background:var(--border)}
+
+/* drop zone at bottom of col */
+.dz{min-height:32px;border-radius:var(--r-sm);margin:0 0 4px;transition:background .15s,border .15s}
+.dz.hov{background:#e8e6de;border:1.5px dashed var(--border2)}
+.empty-msg{font-size:12px;color:var(--text3);text-align:center;padding:18px 0}
+
+/* ── modal ── */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:200;display:flex;align-items:center;justify-content:center}
+.modal{background:var(--surface);border-radius:var(--r);border:1px solid var(--border);padding:20px;width:320px;max-width:90vw}
+.modal h3{font-size:14px;font-weight:600;margin-bottom:12px}
+.modal textarea{width:100%;font-size:13px;min-height:90px;resize:vertical;border:1px solid var(--border);border-radius:var(--r-sm);padding:9px;background:var(--surface2);color:var(--text);font-family:inherit;outline:none}
+.modal textarea:focus{border-color:var(--border2)}
+.modal select{width:100%;margin-top:8px;padding:7px 10px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface2);font-family:inherit;font-size:13px;color:var(--text);cursor:pointer;outline:none}
+.modal-footer{display:flex;gap:8px;margin-top:14px;justify-content:flex-end}
+.btn-cancel{padding:7px 14px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface2);font-family:inherit;font-size:13px;cursor:pointer}
+.btn-save{padding:7px 18px;border:1px solid var(--text);border-radius:var(--r-sm);background:var(--text);color:var(--surface);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer}
+
+/* ── sort bar ── */
+.sortbar{display:flex;gap:6px;padding:0 16px 10px;flex-wrap:wrap;flex-shrink:0}
+.sb{padding:3px 10px;border-radius:20px;border:1px solid var(--border);background:var(--surface);font-family:inherit;font-size:11px;color:var(--text3);cursor:pointer}
+.sb.on{border-color:var(--border2);color:var(--text2);font-weight:600}
+
+/* search highlight */
+mark{background:#fef9c3;border-radius:2px;padding:0 1px}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- top bar -->
+  <div class="topbar">
+    <div class="logo">메모보드<span> ✦</span></div>
+    <input class="topbar-input" id="inp" type="text" placeholder="메모 입력 후 Enter…"/>
+    <select class="cat-select" id="catSel">
+      <option value="idea">💡 아이디어</option>
+      <option value="todo">✅ 할 일</option>
+      <option value="link">🔗 링크</option>
+      <option value="memo">📝 메모</option>
+      <option value="quote">✨ 좋은 글</option>
+    </select>
+    <button class="add-btn" id="addBtn">추가</button>
+  </div>
+
+  <!-- filter -->
+  <div class="filterbar" id="filterbar"></div>
+
+  <!-- sort -->
+  <div class="sortbar">
+    <span style="font-size:11px;color:var(--text3);line-height:1.8;margin-right:2px">정렬:</span>
+    <button class="sb on" data-sort="manual">직접 순서</button>
+    <button class="sb" data-sort="stars">별점 높은 순</button>
+    <button class="sb" data-sort="newest">최신 순</button>
+    <button class="sb" data-sort="oldest">오래된 순</button>
+  </div>
+
+  <!-- board -->
+  <div class="board-wrap">
+    <div class="board" id="board"></div>
+  </div>
+</div>
+
+<!-- edit modal -->
+<div class="modal-bg" id="modal" style="display:none">
+  <div class="modal">
+    <h3>카드 수정</h3>
+    <textarea id="mText"></textarea>
+    <select id="mCat">
+      <option value="idea">💡 아이디어</option>
+      <option value="todo">✅ 할 일</option>
+      <option value="link">🔗 링크</option>
+      <option value="memo">📝 메모</option>
+      <option value="quote">✨ 좋은 글</option>
+    </select>
+    <div class="modal-footer">
+      <button class="btn-cancel" id="mCancel">취소</button>
+      <button class="btn-save" id="mSave">저장</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const CATS = {
+  idea:  {label:'💡 아이디어', dot:'var(--idea-dot)',  bg:'var(--idea-bg)',  tx:'var(--idea-text)'},
+  todo:  {label:'✅ 할 일',    dot:'var(--todo-dot)',  bg:'var(--todo-bg)',  tx:'var(--todo-text)'},
+  link:  {label:'🔗 링크',     dot:'var(--link-dot)',  bg:'var(--link-bg)',  tx:'var(--link-text)'},
+  memo:  {label:'📝 메모',     dot:'var(--memo-dot)',  bg:'var(--memo-bg)',  tx:'var(--memo-text)'},
+  quote: {label:'✨ 좋은 글',  dot:'var(--quote-dot)', bg:'var(--quote-bg)', tx:'var(--quote-text)'},
+};
+
+const SAMPLE = [
+  {id:1, text:'앱에서 다크모드 추가하면 어떨까?', cat:'idea', stars:2, ts:Date.now()-5e6},
+  {id:2, text:'프로젝트 보고서 초안 작성하기', cat:'todo', stars:3, ts:Date.now()-4e6},
+  {id:3, text:'https://paulgraham.com/todo.html\n할 일 목록에 관한 좋은 글', cat:'link', stars:1, ts:Date.now()-3e6},
+  {id:4, text:'오늘 회의 피드백 정리해두기', cat:'memo', stars:0, ts:Date.now()-2e6},
+  {id:5, text:'"단순함은 복잡함을 통과한 사람만이 도달할 수 있다"', cat:'quote', stars:2, ts:Date.now()-1e6},
+];
+
+let cards = load();
+let nid = Math.max(0,...cards.map(c=>c.id))+1;
+let filterCat = null;
+let sortMode = 'manual';
+let dragId = null;
+let editId = null;
+let searchQ = '';
+
+function load(){
+  try{ const d=JSON.parse(localStorage.getItem('memoboard_v3')); if(Array.isArray(d)&&d.length) return d; } catch(e){}
+  return JSON.parse(JSON.stringify(SAMPLE));
+}
+function save(){ try{localStorage.setItem('memoboard_v3',JSON.stringify(cards))}catch(e){} }
+
+function urlIn(t){ const m=t.match(/(https?:\/\/[^\s]+)/); return m?m[1]:null; }
+function esc(t){ return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function highlight(t, q){
+  if(!q) return esc(t);
+  const safe = q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  return esc(t).replace(new RegExp(`(${safe})`,'gi'),'<mark>$1</mark>');
+}
+
+// ── add ──
+function addCard(){
+  const t = document.getElementById('inp').value.trim();
+  if(!t) return;
+  const c = document.getElementById('catSel').value;
+  cards.unshift({id:nid++, text:t, cat:c, stars:0, ts:Date.now()});
+  document.getElementById('inp').value='';
+  save(); render();
+}
+document.getElementById('addBtn').onclick = addCard;
+document.getElementById('inp').onkeydown = e=>{ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();addCard();} };
+
+// ── sort ──
+document.querySelectorAll('.sb').forEach(b=>b.onclick=function(){
+  document.querySelectorAll('.sb').forEach(x=>x.classList.remove('on'));
+  this.classList.add('on');
+  sortMode=this.dataset.sort;
+  render();
+});
+
+// ── modal ──
+document.getElementById('mCancel').onclick = ()=>{ document.getElementById('modal').style.display='none'; };
+document.getElementById('modal').onclick = e=>{ if(e.target.id==='modal') document.getElementById('modal').style.display='none'; };
+document.getElementById('mSave').onclick = ()=>{
+  const c=cards.find(x=>x.id===editId);
+  if(c){
+    c.text=document.getElementById('mText').value.trim()||c.text;
+    c.cat=document.getElementById('mCat').value;
+    save(); render();
+  }
+  document.getElementById('modal').style.display='none';
+};
+
+// ── render ──
+function render(){
+  renderFilters();
+  const board = document.getElementById('board');
+  board.innerHTML='';
+
+  const q = searchQ.toLowerCase();
+  let vis = filterCat ? cards.filter(c=>c.cat===filterCat) : [...cards];
+  if(q) vis = vis.filter(c=>c.text.toLowerCase().includes(q));
+
+  let sorted;
+  if(sortMode==='stars') sorted=[...vis].sort((a,b)=>b.stars-a.stars);
+  else if(sortMode==='newest') sorted=[...vis].sort((a,b)=>b.ts-a.ts);
+  else if(sortMode==='oldest') sorted=[...vis].sort((a,b)=>a.ts-b.ts);
+  else sorted=vis;
+
+  const byCat={};
+  Object.keys(CATS).forEach(k=>byCat[k]=[]);
+  sorted.forEach(c=>byCat[c.cat].push(c));
+
+  Object.entries(CATS).forEach(([cat,ci])=>{
+    const list=byCat[cat];
+    const col=document.createElement('div');
+    col.className='col';
+    col.dataset.cat=cat;
+
+    col.innerHTML=`
+      <div class="col-head">
+        <span class="col-title">
+          <span class="col-dot" style="background:${ci.dot}"></span>
+          ${ci.label}
+        </span>
+        <span class="col-count">${list.length}</span>
+      </div>
+      <div class="cards" id="cards-${cat}"></div>
+    `;
+
+    const cardArea = col.querySelector('.cards');
+
+    if(!list.length){
+      cardArea.innerHTML=`<div class="empty-msg">비어있음</div>`;
+    } else {
+      list.forEach(c=>{
+        const url = c.cat==='link' ? urlIn(c.text) : null;
+        const starsHtml = [1,2,3].map(s=>`<button class="star${c.stars>=s?' on':''}" data-id="${c.id}" data-s="${s}">★</button>`).join('');
+        const div=document.createElement('div');
+        div.className='card';
+        div.draggable=true;
+        div.dataset.id=c.id;
+        div.innerHTML=`
+          <div class="card-btns">
+            <button class="cb" data-edit="${c.id}" title="수정">✎</button>
+            <button class="cb" data-del="${c.id}" title="삭제">✕</button>
+          </div>
+          <span class="tag" style="background:${ci.bg};color:${ci.tx}">${ci.label}</span>
+          <div class="card-text">${highlight(c.text,q)}</div>
+          ${url?`<a class="card-link" href="${url}" target="_blank" rel="noopener">${url}</a>`:''}
+          <div class="stars">${starsHtml}</div>
+        `;
+        // drag
+        div.addEventListener('dragstart',e=>{ dragId=parseInt(div.dataset.id); e.dataTransfer.setData('text',dragId); setTimeout(()=>div.classList.add('dragging'),0); });
+        div.addEventListener('dragend',()=>{ div.classList.remove('dragging'); document.querySelectorAll('.card').forEach(x=>x.classList.remove('over')); document.querySelectorAll('.dz').forEach(x=>x.classList.remove('hov')); dragId=null; });
+        div.addEventListener('dragover',e=>{ e.preventDefault(); e.stopPropagation(); if(parseInt(div.dataset.id)!==dragId) div.classList.add('over'); });
+        div.addEventListener('dragleave',()=>div.classList.remove('over'));
+        div.addEventListener('drop',e=>{ e.preventDefault(); e.stopPropagation(); reorder(parseInt(e.dataTransfer.getData('text')),parseInt(div.dataset.id)); });
+        cardArea.appendChild(div);
+      });
+    }
+
+    // drop zone
+    const dz=document.createElement('div');
+    dz.className='dz';
+    dz.dataset.cat=cat;
+    dz.addEventListener('dragover',e=>{ e.preventDefault(); dz.classList.add('hov'); });
+    dz.addEventListener('dragleave',()=>dz.classList.remove('hov'));
+    dz.addEventListener('drop',e=>{ e.preventDefault(); const id=parseInt(e.dataTransfer.getData('text')); const c=cards.find(x=>x.id===id); if(c){c.cat=cat;save();render();} dz.classList.remove('hov'); });
+    cardArea.appendChild(dz);
+
+    // col drop (category change)
+    col.addEventListener('dragover',e=>e.preventDefault());
+    col.addEventListener('drop',e=>{ e.preventDefault(); const id=parseInt(e.dataTransfer.getData('text')); const c=cards.find(x=>x.id===id); if(c&&c.cat!==cat){c.cat=cat;save();render();} });
+
+    board.appendChild(col);
+  });
+
+  // event delegation
+  document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openEdit(parseInt(b.dataset.edit)));
+  document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{ cards=cards.filter(c=>c.id!==parseInt(b.dataset.del)); save(); render(); });
+  document.querySelectorAll('.star').forEach(b=>b.onclick=()=>{ const c=cards.find(x=>x.id===parseInt(b.dataset.id)); if(c){const s=parseInt(b.dataset.s); c.stars=c.stars===s?0:s; save(); render();} });
+}
+
+function reorder(fromId,toId){
+  if(fromId===toId) return;
+  const fi=cards.findIndex(c=>c.id===fromId);
+  const ti=cards.findIndex(c=>c.id===toId);
+  if(fi<0||ti<0) return;
+  // also match category
+  cards[fi].cat=cards[ti].cat;
+  const [m]=cards.splice(fi,1);
+  cards.splice(ti,0,m);
+  save(); render();
+}
+
+function openEdit(id){
+  const c=cards.find(x=>x.id===id);
+  if(!c) return;
+  editId=id;
+  document.getElementById('mText').value=c.text;
+  document.getElementById('mCat').value=c.cat;
+  document.getElementById('modal').style.display='flex';
+}
+
+function renderFilters(){
+  const bar=document.getElementById('filterbar');
+  const counts={};
+  cards.forEach(c=>counts[c.cat]=(counts[c.cat]||0)+1);
+  let h=`<button class="fb${!filterCat?' on':''}" data-f="all">전체 (${cards.length})</button>`;
+  Object.entries(CATS).forEach(([k,ci])=>{
+    if(counts[k]) h+=`<button class="fb${filterCat===k?' on':''}" data-f="${k}">${ci.label} (${counts[k]})</button>`;
+  });
+  bar.innerHTML=h;
+  bar.querySelectorAll('.fb').forEach(b=>b.onclick=()=>{ filterCat=b.dataset.f==='all'?null:b.dataset.f; render(); });
+}
+
+// search: repurpose input as live search when focused + slash key
+document.addEventListener('keydown',e=>{
+  if(e.key==='/'&&document.activeElement!==document.getElementById('inp')){
+    e.preventDefault();
+    document.getElementById('inp').focus();
+  }
+});
+
+render();
+</script>
+</body>
+</html>
